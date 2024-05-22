@@ -207,7 +207,7 @@ func NewPowerVSClusterScope(params PowerVSClusterScopeParams) (*PowerVSClusterSc
 	}
 
 	// if powervs.cluster.x-k8s.io/create-infra=true annotation is not set, create only powerVSClient.
-	if !genUtil.CheckCreateInfraAnnotation(*params.IBMPowerVSCluster) {
+	if !CheckCreateInfraAnnotation(*params.IBMPowerVSCluster) {
 		return &PowerVSClusterScope{
 			session:           session,
 			Logger:            params.Logger,

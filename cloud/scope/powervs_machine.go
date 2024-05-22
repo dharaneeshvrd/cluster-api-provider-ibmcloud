@@ -221,7 +221,7 @@ func NewPowerVSMachineScope(params PowerVSMachineScopeParams) (scope *PowerVSMac
 	scope.IBMPowerVSClient = c
 	scope.DHCPIPCacheStore = params.DHCPIPCacheStore
 
-	if !genUtil.CheckCreateInfraAnnotation(*params.IBMPowerVSCluster) {
+	if !CheckCreateInfraAnnotation(*params.IBMPowerVSCluster) {
 		return scope, nil
 	}
 

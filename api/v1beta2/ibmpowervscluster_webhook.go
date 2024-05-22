@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta2
 
 import (
+	"fmt"
+	genUtil "sigs.k8s.io/cluster-api-provider-ibmcloud/util"
 	"strconv"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -81,6 +83,13 @@ func (r *IBMPowerVSCluster) validateIBMPowerVSCluster() (admission.Warnings, err
 		allErrs = append(allErrs, err)
 	}
 
+	// expecting validateIBMPowerVSClusterCreateInfraPrereq() returns no error before using PowerVS zone and VPC region.
+	if len(allErrs) == 0 {
+		if err := r.validateIBMPowerVSClusterTransitGateway(); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
 	if len(allErrs) == 0 {
 		return nil, nil
 	}
@@ -121,6 +130,10 @@ func (r *IBMPowerVSCluster) validateIBMPowerVSClusterCreateInfraPrereq() *field.
 		return field.Invalid(field.NewPath("spec.zone"), r.Spec.Zone, "value of zone is empty")
 	}
 
+	if ok := genUtil.IsValidPowerVSZone(*r.Spec.Zone); !ok {
+		return field.Invalid(field.NewPath("spec.zone"), r.Spec.Zone, fmt.Sprintf("zone '%s' is not supported", *r.Spec.Zone))
+	}
+
 	if r.Spec.VPC == nil {
 		return field.Invalid(field.NewPath("spec.vpc"), r.Spec.VPC, "value of VPC is empty")
 	}
@@ -128,10 +141,21 @@ func (r *IBMPowerVSCluster) validateIBMPowerVSClusterCreateInfraPrereq() *field.
 	if r.Spec.VPC.Region == nil {
 		return field.Invalid(field.NewPath("spec.vpc.region"), r.Spec.VPC.Region, "value of VPC region is empty")
 	}
+	if ok := genUtil.IsValidVPCRegion(*r.Spec.VPC.Region); !ok {
+		return field.Invalid(field.NewPath("spec.vpc.region"), r.Spec.VPC.Region, fmt.Sprintf("VPC region '%s' is not supported", *r.Spec.VPC.Region))
+	}
 
 	if r.Spec.ResourceGroup == nil {
 		return field.Invalid(field.NewPath("spec.resourceGroup"), r.Spec.ResourceGroup, "value of resource group is empty")
 	}
 
+	return nil
+}
+
+func (r *IBMPowerVSCluster) validateIBMPowerVSClusterTransitGateway() *field.Error {
+	_, globalRouting, _ := genUtil.GetTransitGatewayLocationAndRouting(r.Spec.Zone, r.Spec.VPC.Region)
+	if r.Spec.TransitGateway.GlobalRouting != nil && !*r.Spec.TransitGateway.GlobalRouting && globalRouting != nil && *globalRouting {
+		return field.Invalid(field.NewPath("spec.transitGateway.globalRouting"), r.Spec.TransitGateway.GlobalRouting, "global routing is required since PowerVS and VPC region are from different region")
+	}
 	return nil
 }
